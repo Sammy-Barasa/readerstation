@@ -1,0 +1,125 @@
+{%extends "layout.html"%}
+
+{%block title%}BookInfo{%endblock%}
+
+{%block body%}
+<div class="container">
+    <br>
+    <hr>
+    <br>   
+<section>
+    <div class="row">
+        <div class="card mb-3" style="max-width: 98%;">
+            <div class="row no-gutters">
+              <div class="col-md-4">
+                <img src="{{urlimg}}" class="card-img" alt="partner 2">
+              </div>
+              <div class="col-md-8">
+                <div class="card-body">
+                    <h5 class="card-title">Book Description</h5>
+                    <h6 class="card-subtitle mb-2 text-muted"><b>{{d}}</b></h6>
+                    <p class="card-text">{{e}}</p>
+                </div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">Text reviews count : {{b.text_reviews_count}}</li>
+                    <li class="list-group-item">Reviews count  : {{b.reviews_count}}</li>
+                    <li class="list-group-item">Rating Count   :  {{b.ratings_count}}</li>
+                    <li class="list-group-item">Work rating Count   :  {{b.work_ratings_count}}</li>
+                    <li class="list-group-item">Work review Count   :  {{b.work_reviews_count}}</li>
+                    <li class="list-group-item">Average rating : {{b.average_rating}}</li>
+                  </ul>
+              </div>
+            </div>
+          </div>
+        <!-- <div class="col-md-4">
+            <img src="{{urlimg}}" alt="partner 2">
+        </div>
+    <div class="col-md-8">
+        <div class="card" style="width: 48rem;">
+            <div class="card-body">
+              <h5 class="card-title">Book Description</h5>
+              <h6 class="card-subtitle mb-2 text-muted"><b>{{d}}</b></h6>
+              <p class="card-text">{{e}}</p>
+            </div>
+          </div>
+    </div> -->
+
+    </div>
+</section>
+<hr>
+<div class="container">
+    <div class="row ">
+        <div class="col-md-12">
+    <table class="table table-sm table-light">
+        <thead>
+          <tr>
+            <th scope="col">id</th>
+            <th scope="col">isbn</th>
+            <th scope="col">title</th>
+            <th scope="col">author</th>
+            <th scope="col">year</th>
+            <th scope="col">review</th>
+    
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="table-success">
+            <th scope="row">{{b.id}}</th>
+            <td>{{b.isbn}}</td>
+            <td>{{book_[2]}}</td>
+            <td>{{book_[3]}}</td>
+            <td>{{book_[4]}}</td>
+            <td>{{review}}</td>
+          </tr>
+          </tbody>
+          </table>
+        </div>
+    </div>   
+</div>
+<hr>
+<section>
+    <hr>
+    <div class="row">
+        <div class="col-md-3">
+            <div class='footer justify-content-center'>
+                <h5>Add a review</h5>
+            </div>
+        </div>
+    </div>
+    <div>
+        <form  action="/reviews/{{b.isbn}}" method="POST">
+            <div class="row">
+                <div class="col-md-8">  
+                    <div class="input-group">
+                        <textarea class="form-control" placeholder="add review" name="review" aria-label="With textarea"></textarea>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                        <select class="form-control" id="sel1" name="rating">
+                          <option value="1">1-star</option>
+                          <option value="2">2-star</option>
+                          <option selected value="3">3-star</option>
+                          <option value="4">4-star</option>
+                          <option value="5">5-star</option>
+                          <label for="sel1">Rate</label>
+                        </select>
+                </div>
+                <button type="submit" class="btn btn-primary mb-1">Post</button>
+            </div>
+        </form>
+    </div>
+    </section>
+    <br>
+    <hr>
+    <br>
+    <section>
+        <div class="row">
+            <div class="col-md-3">
+                <div class='footer justify-content-center'>
+                    <p>courtesy of readerstation</p>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{%endblock%}
