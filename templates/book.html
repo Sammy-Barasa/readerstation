@@ -63,14 +63,16 @@
           </tr>
         </thead>
         <tbody>
+        {%for infom in bookinfom%}
           <tr class="table-success">
             <th scope="row">{{b.id}}</th>
             <td>{{b.isbn}}</td>
-            <td>{{book_[2]}}</td>
-            <td>{{book_[3]}}</td>
-            <td>{{book_[4]}}</td>
+            <td>{{infom[2]}}</td>
+            <td>{{infom[3]}}</td>
+            <td>{{infom[4]}}</td>
             <td>{{review}}</td>
           </tr>
+          {%endfor%}
           </tbody>
           </table>
         </div>

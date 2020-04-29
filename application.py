@@ -25,8 +25,6 @@ if not os.getenv("DATABASE_URL"):
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 # app.config['SECRET_KEY'] ='qwsvxjghbnlkhssewfgttysvxbv'
-# app.config["SESSION_PERMANENT"] = False
-# app.config["SESSION_TYPE"] = "filesystem"
 # app.config['SQLALCHEMY_DATABASE_URI']=os.getenv("DATABASE_URL")
 # app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
 # Session(app)
@@ -95,19 +93,16 @@ def login():
             login_user(user)
             next_page = request.args.get('next')
             return redirect(next_page) if next_page else redirect("/")
-        # a=bcrypt.checkpw(passwod.encode(), hashed)
-        # print(a)
-        # print(user.password)
-        # return render_template("login.html")
         
        
 @app.route("/searchpage" ,methods=["GET","POST"])
 def bookpage():
-    #if  get search
+    #through get,output all books from database 
     if request.method=="GET":
         result= db.execute("SELECT * FROM books")
         return render_template("user.html",result=result)
     else:
+        # there is a seeach and we perfom it
         searchdata=request.form.get("search")
         search=searchdata.lower()
         print(search)
@@ -123,54 +118,53 @@ def bookpage():
 @app.route("/book/<bn>")
 @login_required
 def book(bn):
-    # isbn=requests.get(isbn)
-    # print(isbn)
-    #get here after clicking a book,post
-    #receive isbn onclick js xml post
-    #res=requests.get('https://www.goodreads.com/book/isbn/0441172717?user_id=110825791&format=json')
+    #get here after clicking a book,after submitting review
+    #res=requests.get('https://www.goodreads.com/book/isbn/0441172717?user_id=110825791&format=json') (get book rating from googreads api)
+    
+    # show book from good reads api
     response=requests.get("https://www.goodreads.com/book/isbn/"+bn,params={"user_id":"110825791","format":"json"})
     c=response.json()['reviews_widget']
+    # returns html page
     soup=BeautifulSoup(c,'lxml')
     bookTitle=soup.a.text
     datam=soup.a['href']
     page=requests.get(datam).text 
+    # destructuring the page to obtain book title, book image url & book description
     book=BeautifulSoup(page,'lxml')
     bookUrl=book.find('img',id='coverImage')['src']
     bookDescription=book.find('div',id='descriptionContainer').text
     print(bookUrl)
     print(bookTitle)
     print(bookDescription)
+    # get book rating from googreads api
     res = requests.get("https://www.goodreads.com/book/review_counts.json",params={"isbns":bn,"key":"NxHR0wNCivzIEefBextQ"})
     c=res.json()
-    # a={"books":[{"id":128029,"isbn":"1594489505","isbn13":"9781594489501","ratings_count":995721,"reviews_count":1534043,"text_reviews_count":42651,"work_ratings_count":1072985,"work_reviews_count":1562657,"work_text_reviews_count":51119,"average_rating":"4.37"}]}
-    # b=["{{books.id}}","{{books.ratings_count}}","{{books.reviews_count}}","{{books.average_rating}}"
-    #def get_nba_debut_year(player):
-        #return int(player['nbaDebutYear'])
-    # new_list = c[books[0]]
-    # print(new_list)
     b=c['books'][0]
     print(b)
     sbn=bn.lower()
-    book_=db.execute("SELECT * FROM books WHERE (LOWER(isbn) LIKE :bn) LIMIT 1", {"bn":'%'+ sbn +'%'}).fetchall()
-    print(book_)
-    # #review of the book from our database
+    bookinfom=db.execute("SELECT * FROM books WHERE (LOWER(isbn) LIKE :bn) LIMIT 1", {"bn":'%'+ sbn +'%'}).fetchall()
+    print(bookinfom)
+    # review of the book from our database
     revs=db.execute("SELECT * FROM reviews WHERE (LOWER(book_isbn) LIKE :bn)",{"bn":'%'+ sbn +'%'}).fetchall()
     print(revs)
     #output parameters of clicked book
-    return render_template("book.html",b=b,urlimg=bookUrl,d=bookTitle,e=bookDescription,book_=book_,review=revs)
+    return render_template("book.html",b=b,urlimg=bookUrl,d=bookTitle,e=bookDescription,bookinfom=bookinfom,review=revs)
 @app.route("/reviews/<book_isbn>", methods=["POST"])
 @login_required
 def bookReview(book_isbn):
+    # get isbn of book
     book_isbn=book_isbn
     print(book_isbn)
+    # get comment from form
     comment=request.form.get("review")
     print(comment)
+    # get rating from form 
     rating=request.form.get("rating")
     print(rating)
     #owner
     #add to database
-    db.execute("INSERT INTO reviews(person,book_isbn,comments,rating) VALUES ( :person, :book_isbn, :comments, :rating)",{"person": person, "book_isbn": book_isbn, "comments": comment, "rating": rating})
-    db.commit()
+    # db.execute("INSERT INTO reviews(person,book_isbn,comments,rating) VALUES ( :person, :book_isbn, :comments, :rating)",{"person": person, "book_isbn": book_isbn, "comments": comment, "rating": rating})
+    # db.commit()
     return redirect(url_for('book', bn=book_isbn))
 
 @app.route("/logout")
