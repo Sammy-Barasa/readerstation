@@ -8,6 +8,7 @@ from flask_session import Session
 from flask_login import LoginManager, login_user, current_user, logout_user, login_required
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
+from flask_bcrypt import Bcrypt
 import bcrypt
 import datetime
 
@@ -32,6 +33,7 @@ Session(app)
 # Set up database
 engine = create_engine(os.getenv("DATABASE_URL"))
 db = scoped_session(sessionmaker(bind=engine))
+bcrypt = Bcrypt(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -56,14 +58,16 @@ def register():
         name=request.form.get('name')
         # get password
         password=request.form.get('password')
-        passwordToHash=password.encode('utf-8')
-        harshed_password=bcrypt.hashpw(passwordToHash, bcrypt.gensalt())
+        passwordToHash=password
+        # harshed_password=bcrypt.hashpw(passwordToHash, bcrypt.gensalt())
+        hashed_password = bcrypt.generate_password_hash(passwordToHash).decode('utf-8')
+        print(hashed_password)
         # get email
         email=request.form.get('email')
         # store in_database 
         image_file=""
         db.execute("INSERT INTO users(name,email, password, image_file) VALUES ( :name, :email, :password, :image_file)",
-                   {"name": name, "email": email, "password": harshed_password, "image_file": image_file})
+                   {"name": name, "email": email, "password": hashed_password, "image_file": image_file})
         db.commit()
         print('added {},{}'.format(name,email))
         return render_template("login.html")
@@ -76,13 +80,14 @@ def login():
         # get username
         email=request.form.get('email')
         # get password
-        passwod=request.form.get('password')
-        print(passwod)
+        passwordToCheck=request.form.get('password')
+        print(passwordToCheck)
         # verify username
         user=db.execute("SELECT * FROM users WHERE email LIKE :email LIMIT 1",{ "email": '%' + email + '%'}).fetchone()
         print(user.password)
-        hashed_=user.password
-        a=bcrypt.checkpw(hashed_,passwod.encode('utf-8')) != hashed_
+        userPassword=user.password
+        # a=bcrypt.checkpw(hashed_,passwod.encode('utf-8')) != hashed_
+        a=bcrypt.check_password_hash(userPassword, passwordToCheck)
         print(a)
         # verify password
         if bcrypt.hashpw(passwod.encode('utf-8'), bcrypt.gensalt()) != hashed_:
