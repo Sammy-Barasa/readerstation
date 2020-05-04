@@ -58,7 +58,7 @@ def index():
     # show account
     # show reviews output
     # see other reviews
-    return return  redirect(url_for('login')) 
+    return  redirect(url_for('login')) 
 
 @app.route("/register", methods=["GET","POST"])
 def register():
