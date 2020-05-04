@@ -112,7 +112,7 @@ def login():
             # print(user)
             # next_page = request.args.get('next')
             # print(next_page)
-            return  redirect(url_for('bookpage'))   
+            return render_template("user.html") 
         
        
 @app.route("/searchpage" ,methods=["GET","POST"])
