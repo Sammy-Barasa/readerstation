@@ -13,7 +13,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from flask_bcrypt import Bcrypt
-from .models import User
+from models import User
 import bcrypt
 import datetime
 
