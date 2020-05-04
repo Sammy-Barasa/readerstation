@@ -2,46 +2,57 @@ import os
 import csv
 import json
 import requests
-from bs4 import BeautifulSoup 
-from flask import Flask, session, redirect,render_template, request, jsonify, url_for
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager
 from flask_session import Session
-from flask_login import LoginManager, login_user, current_user, logout_user, login_required
+from bs4 import BeautifulSoup 
+from flask import Flask, session, redirect,render_template, request, jsonify, url_for, flash
+from flask_login import LoginManager, login_user, current_user, logout_user, login_required 
+from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from flask_bcrypt import Bcrypt
+from .models import User
 import bcrypt
 import datetime
 
 
 
+
 app = Flask(__name__)
+# keys=secrets.token_urlsafe(16)
+# Configure session to use filesystem
+app.config["SESSION_PERMANENT"] = False
+app.config["SESSION_TYPE"] = "filesystem"
+app.config['SECRET_KEY'] = '5791628bb0b13ce0c676dfde280ba245'
+app.config['SQLALCHEMY_DATABASE_URI']=os.getenv("DATABASE_URL")
+
+# bcrypt = Bcrypt(app)
+# Session(app)
+db=SQLAlchemy()
+db.init_app(app)
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+# login_manager.session_protection = "strong"
+# login_serializer = app.secret_key
+@login_manager.user_loader
+def load_user(user_id):
+    try:
+        return dtb.query(User).filter(User.id == int(user_id)).one()
+    except:
+        return None
+    # return dtb.query(User).filter(User.id == int(user_id)).one()
 
 # Check for environment variable
 if not os.getenv("DATABASE_URL"):
     raise RuntimeError("DATABASE_URL is not set")
 
-
-# keys=secrets.token_urlsafe(16)
-# Configure session to use filesystem
-app.config["SESSION_PERMANENT"] = False
-app.config["SESSION_TYPE"] = "filesystem"
-# app.config['SECRET_KEY'] ='qwsvxjghbnlkhssewfgttysvxbv'
-# app.config['SQLALCHEMY_DATABASE_URI']=os.getenv("DATABASE_URL")
-# app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
-# Session(app)
-Session(app)
 # Set up database
+
 engine = create_engine(os.getenv("DATABASE_URL"))
-db = scoped_session(sessionmaker(bind=engine))
-bcrypt = Bcrypt(app)
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-
-@login_manager.user_loader
-def load_user(user_id):
-    return user.get(user_id)
-
+dtb = scoped_session(sessionmaker(bind=engine))
 @app.route("/")
 def index():
     # show account
@@ -58,17 +69,18 @@ def register():
         name=request.form.get('name')
         # get password
         password=request.form.get('password')
-        passwordToHash=password
-        # harshed_password=bcrypt.hashpw(passwordToHash, bcrypt.gensalt())
-        hashed_password = bcrypt.generate_password_hash(passwordToHash).decode('utf-8')
-        print(hashed_password)
+        # passwordToHash=password.encode('utf-8')
+        hashed_password=generate_password_hash(password, method='sha256')
         # get email
         email=request.form.get('email')
         # store in_database 
-        image_file=""
-        db.execute("INSERT INTO users(name,email, password, image_file) VALUES ( :name, :email, :password, :image_file)",
-                   {"name": name, "email": email, "password": hashed_password, "image_file": image_file})
-        db.commit()
+        user=User(
+            name=name,
+            email=email,
+            password=password
+        )
+        dtb.add(user)
+        dtb.commit()
         print('added {},{}'.format(name,email))
         return render_template("login.html")
         
@@ -83,28 +95,30 @@ def login():
         passwordToCheck=request.form.get('password')
         print(passwordToCheck)
         # verify username
-        user=db.execute("SELECT * FROM users WHERE email LIKE :email LIMIT 1",{ "email": '%' + email + '%'}).fetchone()
-        print(user.password)
-        userPassword=user.password
-        # a=bcrypt.checkpw(hashed_,passwod.encode('utf-8')) != hashed_
-        a=bcrypt.check_password_hash(userPassword, passwordToCheck)
-        print(a)
-        # verify password
-        if bcrypt.hashpw(passwod.encode('utf-8'), bcrypt.gensalt()) != hashed_:
+        user=dtb.execute("SELECT * FROM users WHERE email LIKE :email LIMIT 1",{ "email": '%' + email + '%'}).fetchone()
+        # verify user,bypassing veryfying password *I have not solved bycrypt problems
+        checkpwhashed=check_password_hash(user.password, passwordToCheck)
+        #get remember bool
+        remember = True if request.form.get('remember') else False
+        if not user and check_password_hash(user.password, passwordToCheck):
             return render_template("login.html")
         else:
-            a=bcrypt.hashpw(passwod.encode('utf-8'), bcrypt.gensalt()) != hashed_
-            print(a)
-            login_user(user)
-            next_page = request.args.get('next')
-            return redirect(next_page) if next_page else redirect("/")
+            # load_user(user.id)
+            # login_user(user,remember=remember,force=True)
+            session['logged_in'] = True
+            # session=True 
+            # user.is_authenticated = True
+            # print(user)
+            # next_page = request.args.get('next')
+            # print(next_page)
+            return  redirect(url_for('index'))   
         
        
 @app.route("/searchpage" ,methods=["GET","POST"])
 def bookpage():
     #through get,output all books from database 
     if request.method=="GET":
-        result= db.execute("SELECT * FROM books")
+        result= dtb.execute("SELECT * FROM books")
         return render_template("user.html",result=result)
     else:
         # there is a seeach and we perfom it
@@ -112,7 +126,7 @@ def bookpage():
         search=searchdata.lower()
         print(search)
         try:
-            results=db.execute("SELECT * FROM books WHERE (LOWER(isbn) LIKE :search) OR (LOWER(title) LIKE :search) OR (LOWER(author) LIKE :search) LIMIT 50",
+            results=dtb.execute("SELECT * FROM books WHERE (LOWER(isbn) LIKE :search) OR (LOWER(title) LIKE :search) OR (LOWER(author) LIKE :search) LIMIT 50",
             { "search": '%' + search + '%'} ).fetchall()
             print(results)
             num=len(results)
@@ -121,7 +135,6 @@ def bookpage():
             print(identifier)
             return render_template("user.html")
 @app.route("/book/<bn>")
-@login_required
 def book(bn):
     #get here after clicking a book,after submitting review
     #res=requests.get('https://www.goodreads.com/book/isbn/0441172717?user_id=110825791&format=json') (get book rating from googreads api)
@@ -147,19 +160,21 @@ def book(bn):
     b=c['books'][0]
     print(b)
     sbn=bn.lower()
-    bookinfom=db.execute("SELECT * FROM books WHERE (LOWER(isbn) LIKE :bn) LIMIT 1", {"bn":'%'+ sbn +'%'}).fetchall()
-    print(bookinfom)
+    bookinfom=dtb.execute("SELECT * FROM books WHERE (LOWER(isbn) LIKE :bn) LIMIT 1", {"bn":'%'+ sbn +'%'}).fetchall()
+    print(bookinfom[0][0])
     # review of the book from our database
-    revs=db.execute("SELECT * FROM reviews WHERE (LOWER(book_isbn) LIKE :bn)",{"bn":'%'+ sbn +'%'}).fetchall()
+    revs=dtb.execute("SELECT * FROM reviews WHERE (bkid = :bn)",{"bn": bookinfom[0][0]}).fetchall()
     print(revs)
     #output parameters of clicked book
     return render_template("book.html",b=b,urlimg=bookUrl,d=bookTitle,e=bookDescription,bookinfom=bookinfom,review=revs)
 @app.route("/reviews/<book_isbn>", methods=["POST"])
-@login_required
 def bookReview(book_isbn):
+    person=current_user.id
     # get isbn of book
     book_isbn=book_isbn
     print(book_isbn)
+    # get book to retrieve its bkid
+    book=dtb.execute("SELECT * FROM books WHERE (LOWER(isbn) LIKE :bn) LIMIT 1", {"bn":'%'+ book_isbn +'%'}).fetchall()
     # get comment from form
     comment=request.form.get("review")
     print(comment)
@@ -168,8 +183,8 @@ def bookReview(book_isbn):
     print(rating)
     #owner
     #add to database
-    # db.execute("INSERT INTO reviews(person,book_isbn,comments,rating) VALUES ( :person, :book_isbn, :comments, :rating)",{"person": person, "book_isbn": book_isbn, "comments": comment, "rating": rating})
-    # db.commit()
+    dtb.execute("INSERT INTO reviews(rating,comment,bkid) VALUES ( :rating, :comments, :bkid)",{"rating": rating, "comment": comment,  "bkid": book.id,})
+    dtb.commit()
     return redirect(url_for('book', bn=book_isbn))
 
 @app.route("/logout")
@@ -177,3 +192,4 @@ def bookReview(book_isbn):
 def logout():
     logout_user()
     return redirect("/login")
+
